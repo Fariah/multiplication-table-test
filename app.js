@@ -1,14 +1,14 @@
 // 1. Initialization and State
 const state = {
-  playerName: '',
-  userId: null,         // Unique ID for device identification
-  currentSet: null,
-  tasks: [],
-  timeLimit: 180,
-  timeLeft: 180,
-  timerInterval: null,
-  startTime: null,
-  isFinished: false,
+    playerName: '',
+    userId: null,         // Unique ID for device identification
+    currentSet: null,
+    tasks: [],
+    timeLimit: 180,
+    timeLeft: 180,
+    timerInterval: null,
+    startTime: null,
+    isFinished: false,
 };
 
 // --- SUPABASE CONFIGURATION ---
@@ -19,23 +19,39 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 // Note: 'supabase' object comes from the library included in index.html
 const sb = (SUPABASE_URL && SUPABASE_URL !== 'https://mxcstpknilisaetqiepe.supabase.co') ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 
+if (sb) {
+    console.log('Спроба відправити дані:', attempt);
+    try {
+        const {data, error} = await sb.from('leaderboard').insert([attempt]);
+        if (error) {
+            console.error('Помилка Supabase:', error.message, error.details);
+        } else {
+            console.log('Дані успішно збережено в хмарі!', data);
+        }
+    } catch (e) {
+        console.error('Критична помилка мережі:', e);
+    }
+} else {
+    console.warn('Supabase не ініціалізовано. Перевірте ключі в app.js');
+}
+
 // Loading on start
 document.addEventListener('DOMContentLoaded', async () => {
-  initUser();
-  loadPlayerName();
-  try {
-    await loadData();
-    renderHomeSets();
-  } catch (err) {
-    console.error('Data loading error:', err);
-    const container = document.getElementById('sets-list');
-    if (container) {
-      container.innerHTML = `<p style="color: var(--wrong); grid-column: 1/-1; padding: 20px; background: rgba(231,76,60,0.1); border-radius: 12px;">
+    initUser();
+    loadPlayerName();
+    try {
+        await loadData();
+        renderHomeSets();
+    } catch (err) {
+        console.error('Data loading error:', err);
+        const container = document.getElementById('sets-list');
+        if (container) {
+            container.innerHTML = `<p style="color: var(--wrong); grid-column: 1/-1; padding: 20px; background: rgba(231,76,60,0.1); border-radius: 12px;">
         ⚠️ <b>Помилка завантаження даних.</b>
       </p>`;
+        }
     }
-  }
-  bindEvents();
+    bindEvents();
 });
 
 // 2. Load JSON Data
@@ -43,117 +59,117 @@ let tasksData = null;
 let badgesData = null;
 
 async function loadData() {
-  // Check for local file protocol
-  if (window.location.protocol === 'file:') {
-    throw new Error('Local file protocol detected');
-  }
+    // Check for local file protocol
+    if (window.location.protocol === 'file:') {
+        throw new Error('Local file protocol detected');
+    }
 
-  const [t, b] = await Promise.all([
-    fetch('data/tasks.json').then(r => r.json()),
-    fetch('data/badges.json').then(r => r.json()),
-  ]);
-  tasksData = t;
-  badgesData = b;
+    const [t, b] = await Promise.all([
+        fetch('data/tasks.json').then(r => r.json()),
+        fetch('data/badges.json').then(r => r.json()),
+    ]);
+    tasksData = t;
+    badgesData = b;
 }
 
 // 3. Screen Navigation
 function showScreen(id) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  const target = document.getElementById('screen-' + id);
-  if (target) target.classList.add('active');
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    const target = document.getElementById('screen-' + id);
+    if (target) target.classList.add('active');
 }
 
 // 4. Render Home Sets
 function renderHomeSets() {
-  const container = document.getElementById('sets-list');
-  if (!container || !tasksData) return;
-  
-  container.innerHTML = '';
-  tasksData.sets.forEach(set => {
-    const card = document.createElement('div');
-    card.className = 'set-card' + (set.extra ? ' extra' : '');
-    card.innerHTML = `
+    const container = document.getElementById('sets-list');
+    if (!container || !tasksData) return;
+
+    container.innerHTML = '';
+    tasksData.sets.forEach(set => {
+        const card = document.createElement('div');
+        card.className = 'set-card' + (set.extra ? ' extra' : '');
+        card.innerHTML = `
       <div class="set-label">${set.label}</div>
       <div class="set-meta">${set.tasks.length} прикладів · ${formatTime(set.timeLimit)}</div>
       ${set.extra ? '<div class="set-bonus">×1.5 очок</div>' : ''}
     `;
-    card.addEventListener('click', () => startGame(set));
-    container.appendChild(card);
-  });
+        card.addEventListener('click', () => startGame(set));
+        container.appendChild(card);
+    });
 }
 
 // 5. Start Game
 function startGame(set) {
-  const name = document.getElementById('player-name').value.trim();
-  if (!name) {
-    alert('Please enter your name!');
-    return;
-  }
+    const name = document.getElementById('player-name').value.trim();
+    if (!name) {
+        alert('Please enter your name!');
+        return;
+    }
 
-  state.playerName = name;
-  savePlayerName(name);
-  state.currentSet = set;
-  
-  // Dynamic task generation
-  state.tasks = generateDynamicTasks(set);
-  
-  state.timeLimit = set.timeLimit;
-  state.timeLeft = set.timeLimit;
-  state.isFinished = false;
-  state.startTime = Date.now();
+    state.playerName = name;
+    savePlayerName(name);
+    state.currentSet = set;
 
-  document.getElementById('game-title').textContent = set.label;
-  renderTasksGrid();
-  startTimer();
-  showScreen('game');
+    // Dynamic task generation
+    state.tasks = generateDynamicTasks(set);
 
-  // Focus on the first input
-  setTimeout(() => {
-    const first = document.querySelector('.answer-input');
-    if (first) first.focus();
-  }, 100);
+    state.timeLimit = set.timeLimit;
+    state.timeLeft = set.timeLimit;
+    state.isFinished = false;
+    state.startTime = Date.now();
+
+    document.getElementById('game-title').textContent = set.label;
+    renderTasksGrid();
+    startTimer();
+    showScreen('game');
+
+    // Focus on the first input
+    setTimeout(() => {
+        const first = document.querySelector('.answer-input');
+        if (first) first.focus();
+    }, 100);
 }
 
 function generateDynamicTasks(set) {
-  let tasks = [];
-  if (set.id === 'multiply-2-5') {
-    for (let a = 2; a <= 5; a++) {
-      for (let b = 1; b <= 9; b++) tasks.push({ a, b, op: '*' });
+    let tasks = [];
+    if (set.id === 'multiply-2-5') {
+        for (let a = 2; a <= 5; a++) {
+            for (let b = 1; b <= 9; b++) tasks.push({a, b, op: '*'});
+        }
+    } else if (set.id === 'multiply-6-9') {
+        for (let a = 6; a <= 9; a++) {
+            for (let b = 1; b <= 9; b++) tasks.push({a, b, op: '*'});
+        }
+    } else if (set.id === 'divide-extra') {
+        // Generate reverse operations for 2-9 multiplication table
+        for (let b = 2; b <= 9; b++) {
+            for (let res = 2; res <= 9; res++) {
+                tasks.push({a: b * res, b, op: '/'});
+            }
+        }
+        // Take random 36 tasks for division
+        shuffleArray(tasks);
+        return tasks.slice(0, 36);
+    } else {
+        // Fallback to static tasks if ID is unknown
+        tasks = [...set.tasks];
     }
-  } else if (set.id === 'multiply-6-9') {
-    for (let a = 6; a <= 9; a++) {
-      for (let b = 1; b <= 9; b++) tasks.push({ a, b, op: '*' });
-    }
-  } else if (set.id === 'divide-extra') {
-    // Generate reverse operations for 2-9 multiplication table
-    for (let b = 2; b <= 9; b++) {
-      for (let res = 2; res <= 9; res++) {
-        tasks.push({ a: b * res, b, op: '/' });
-      }
-    }
-    // Take random 36 tasks for division
-    shuffleArray(tasks);
-    return tasks.slice(0, 36);
-  } else {
-    // Fallback to static tasks if ID is unknown
-    tasks = [...set.tasks];
-  }
-  
-  return shuffleArray(tasks);
+
+    return shuffleArray(tasks);
 }
 
 // 6. Render Tasks Grid
 function renderTasksGrid() {
-  const grid = document.getElementById('tasks-grid');
-  grid.innerHTML = '';
+    const grid = document.getElementById('tasks-grid');
+    grid.innerHTML = '';
 
-  state.tasks.forEach((task, index) => {
-    const cell = document.createElement('div');
-    cell.className = 'task-cell';
-    cell.dataset.index = index;
+    state.tasks.forEach((task, index) => {
+        const cell = document.createElement('div');
+        cell.className = 'task-cell';
+        cell.dataset.index = index;
 
-    const opSymbol = task.op === '*' ? '×' : '÷';
-    cell.innerHTML = `
+        const opSymbol = task.op === '*' ? '×' : '÷';
+        cell.innerHTML = `
       <span class="task-text">${task.a} ${opSymbol} ${task.b} =</span>
       <input
         type="number"
@@ -163,190 +179,190 @@ function renderTasksGrid() {
         autocomplete="off"
       >
     `;
-    grid.appendChild(cell);
-  });
+        grid.appendChild(cell);
+    });
 
-  // Enter moves to next input
-  grid.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      const inputs = Array.from(grid.querySelectorAll('.answer-input'));
-      const idx = inputs.indexOf(e.target);
-      if (idx < inputs.length - 1) {
-        inputs[idx + 1].focus();
-      } else {
-        checkAnswers();
-      }
-    }
-  });
+    // Enter moves to next input
+    grid.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            const inputs = Array.from(grid.querySelectorAll('.answer-input'));
+            const idx = inputs.indexOf(e.target);
+            if (idx < inputs.length - 1) {
+                inputs[idx + 1].focus();
+            } else {
+                checkAnswers();
+            }
+        }
+    });
 }
 
 // 7. Timer
 function startTimer() {
-  updateTimerDisplay();
-  state.timerInterval = setInterval(() => {
-    state.timeLeft--;
     updateTimerDisplay();
-    if (state.timeLeft <= 0) {
-      clearInterval(state.timerInterval);
-      checkAnswers();
-    }
-  }, 1000);
+    state.timerInterval = setInterval(() => {
+        state.timeLeft--;
+        updateTimerDisplay();
+        if (state.timeLeft <= 0) {
+            clearInterval(state.timerInterval);
+            checkAnswers();
+        }
+    }, 1000);
 }
 
 function updateTimerDisplay() {
-  const el = document.getElementById('timer-display');
-  el.textContent = formatTime(state.timeLeft);
-  // Red color when less than 30 seconds left
-  el.classList.toggle('timer-danger', state.timeLeft <= 30);
+    const el = document.getElementById('timer-display');
+    el.textContent = formatTime(state.timeLeft);
+    // Red color when less than 30 seconds left
+    el.classList.toggle('timer-danger', state.timeLeft <= 30);
 }
 
 function formatTime(seconds) {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m}:${s.toString().padStart(2, '0')}`;
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
 // 8. Check Answers and Scoring
 async function checkAnswers() {
-  if (state.isFinished) return;
-  state.isFinished = true;
-  clearInterval(state.timerInterval);
+    if (state.isFinished) return;
+    state.isFinished = true;
+    clearInterval(state.timerInterval);
 
-  const timeSpent = Math.floor((Date.now() - state.startTime) / 1000);
-  const timeLeft = Math.max(0, state.timeLimit - timeSpent);
+    const timeSpent = Math.floor((Date.now() - state.startTime) / 1000);
+    const timeLeft = Math.max(0, state.timeLimit - timeSpent);
 
-  const inputs = document.querySelectorAll('.answer-input');
-  let correct = 0;
-  const results = [];
+    const inputs = document.querySelectorAll('.answer-input');
+    let correct = 0;
+    const results = [];
 
-  state.tasks.forEach((task, index) => {
-    const input = inputs[index];
-    const userAnswer = input ? parseInt(input.value, 10) : NaN;
-    const correctAnswer = task.op === '*' ? task.a * task.b : task.a / task.b;
-    const isCorrect = userAnswer === correctAnswer;
+    state.tasks.forEach((task, index) => {
+        const input = inputs[index];
+        const userAnswer = input ? parseInt(input.value, 10) : NaN;
+        const correctAnswer = task.op === '*' ? task.a * task.b : task.a / task.b;
+        const isCorrect = userAnswer === correctAnswer;
 
-    if (isCorrect) correct++;
-    results.push({ task, userAnswer, correctAnswer, isCorrect });
-  });
+        if (isCorrect) correct++;
+        results.push({task, userAnswer, correctAnswer, isCorrect});
+    });
 
-  const total = state.tasks.length;
-  const score = calculateScore(correct, total, timeLeft, state.currentSet.extra);
-  const earnedBadges = calculateBadges(correct, total, timeLeft, state.currentSet);
+    const total = state.tasks.length;
+    const score = calculateScore(correct, total, timeLeft, state.currentSet.extra);
+    const earnedBadges = calculateBadges(correct, total, timeLeft, state.currentSet);
 
-  const attempt = {
-    user_id: state.userId,
-    player_name: state.playerName,
-    set_label: state.currentSet.label,
-    score,
-    correct,
-    total,
-    time_spent: timeSpent,
-    badges: earnedBadges.map(b => b.id),
-  };
+    const attempt = {
+        user_id: state.userId,
+        player_name: state.playerName,
+        set_label: state.currentSet.label,
+        score,
+        correct,
+        total,
+        time_spent: timeSpent,
+        badges: earnedBadges.map(b => b.id),
+    };
 
-  // Save locally for instant view
-  saveAttemptLocal(attempt);
-  
-  // Sync with Supabase
-  if (sb) {
-    try {
-      const { data, error } = await sb.from('leaderboard').insert([attempt]);
-      if (error) {
-        console.error('Supabase error on insert:', error.message);
-      }
-    } catch (e) {
-      console.error('Network error during sync:', e);
+    // Save locally for instant view
+    saveAttemptLocal(attempt);
+
+    // Sync with Supabase
+    if (sb) {
+        try {
+            const {data, error} = await sb.from('leaderboard').insert([attempt]);
+            if (error) {
+                console.error('Supabase error on insert:', error.message);
+            }
+        } catch (e) {
+            console.error('Network error during sync:', e);
+        }
     }
-  }
 
-  showResult(results, { ...attempt, timeSpent, date: new Date().toLocaleDateString('uk-UA') }, earnedBadges);
+    showResult(results, {...attempt, timeSpent, date: new Date().toLocaleDateString('uk-UA')}, earnedBadges);
 }
 
 // 9. Score Calculation
 function calculateScore(correct, total, timeLeft, isExtra) {
-  let score = correct * 10;                         // 10 points per correct answer
-  if (correct === total) score += 50;               // Bonus for all correct
-  score += Math.floor(timeLeft / 5);                // 1 point for every 5 seconds remaining
-  if (isExtra) score = Math.round(score * 1.5);     // ×1.5 multiplier for extra mode
-  return score;
+    let score = correct * 10;                         // 10 points per correct answer
+    if (correct === total) score += 50;               // Bonus for all correct
+    score += Math.floor(timeLeft / 5);                // 1 point for every 5 seconds remaining
+    if (isExtra) score = Math.round(score * 1.5);     // ×1.5 multiplier for extra mode
+    return score;
 }
 
 // 10. Badge Calculation
 function calculateBadges(correct, total, timeLeft, set) {
-  const earned = [];
-  const allBadges = badgesData.badges;
-  const find = (id) => allBadges.find(b => b.id === id);
+    const earned = [];
+    const allBadges = badgesData.badges;
+    const find = (id) => allBadges.find(b => b.id === id);
 
-  const history = getHistory();
-  // First attempt ever
-  if (history.length === 1) earned.push(find('first'));
+    const history = getHistory();
+    // First attempt ever
+    if (history.length === 1) earned.push(find('first'));
 
-  // No errors
-  if (correct === total) earned.push(find('sniper'));
+    // No errors
+    if (correct === total) earned.push(find('sniper'));
 
-  // Finished in half time
-  if (timeLeft >= set.timeLimit / 2) earned.push(find('lightning'));
+    // Finished in half time
+    if (timeLeft >= set.timeLimit / 2) earned.push(find('lightning'));
 
-  // Perfectionist (all correct AND half time left)
-  if (correct === total && timeLeft >= set.timeLimit / 2) earned.push(find('perfect'));
+    // Perfectionist (all correct AND half time left)
+    if (correct === total && timeLeft >= set.timeLimit / 2) earned.push(find('perfect'));
 
-  // Streak (3 times in a row without errors for this set)
-  const setHistory = history.filter(a => a.set_label === set.label);
-  if (setHistory.length >= 2 && setHistory.slice(-2).every(a => a.correct === a.total) && correct === total) {
-      earned.push(find('streak'));
-  }
+    // Streak (3 times in a row without errors for this set)
+    const setHistory = history.filter(a => a.set_label === set.label);
+    if (setHistory.length >= 2 && setHistory.slice(-2).every(a => a.correct === a.total) && correct === total) {
+        earned.push(find('streak'));
+    }
 
-  // Master (extra mode without errors)
-  if (set.extra && correct === total) earned.push(find('master'));
+    // Master (extra mode without errors)
+    if (set.extra && correct === total) earned.push(find('master'));
 
-  // Record breaker
-  const prevBest = Math.max(0, ...history.slice(0, -1).map(a => a.score));
-  const currentScore = (history.length > 0) ? history[history.length - 1].score : 0;
-  if (currentScore > prevBest && history.length > 1) earned.push(find('record'));
+    // Record breaker
+    const prevBest = Math.max(0, ...history.slice(0, -1).map(a => a.score));
+    const currentScore = (history.length > 0) ? history[history.length - 1].score : 0;
+    if (currentScore > prevBest && history.length > 1) earned.push(find('record'));
 
-  return earned.filter(Boolean);
+    return earned.filter(Boolean);
 }
 
 // 11. Result Screen
 function showResult(results, attempt, badges) {
-  document.getElementById('result-score').innerHTML = `
+    document.getElementById('result-score').innerHTML = `
     <div class="score-big">${attempt.score} points</div>
     <div class="score-detail">
       ✅ ${attempt.correct} / ${attempt.total} correct &nbsp;|&nbsp; ⏱ ${formatTime(attempt.timeSpent || 0)}
     </div>
   `;
 
-  // Badges with alerts
-  const badgesEl = document.getElementById('result-badges');
-  if (badges.length > 0) {
-    badgesEl.innerHTML = '<h3>Your rewards (click on them!):</h3>' +
-      badges.map(b => `
+    // Badges with alerts
+    const badgesEl = document.getElementById('result-badges');
+    if (badges.length > 0) {
+        badgesEl.innerHTML = '<h3>Your rewards (click on them!):</h3>' +
+            badges.map(b => `
         <div class="badge-item" onclick="alert('${b.label}: ${b.description}')" title="${b.description}">
           <span class="badge-emoji">${b.emoji}</span>
           <span class="badge-label">${b.label}</span>
         </div>
       `).join('');
-  } else {
-    badgesEl.innerHTML = '';
-  }
+    } else {
+        badgesEl.innerHTML = '';
+    }
 
-  // Result grid with highlighting
-  const grid = document.getElementById('result-grid');
-  grid.innerHTML = '';
-  results.forEach(({ task, userAnswer, correctAnswer, isCorrect }) => {
-    const cell = document.createElement('div');
-    const opSymbol = task.op === '*' ? '×' : '÷';
-    cell.className = 'task-cell ' + (isCorrect ? 'correct' : 'wrong');
-    cell.innerHTML = `
+    // Result grid with highlighting
+    const grid = document.getElementById('result-grid');
+    grid.innerHTML = '';
+    results.forEach(({task, userAnswer, correctAnswer, isCorrect}) => {
+        const cell = document.createElement('div');
+        const opSymbol = task.op === '*' ? '×' : '÷';
+        cell.className = 'task-cell ' + (isCorrect ? 'correct' : 'wrong');
+        cell.innerHTML = `
       <span class="task-text">${task.a} ${opSymbol} ${task.b} = </span>
       <span class="answer-shown ${isCorrect ? 'answer-correct' : 'answer-wrong'}">
         ${isCorrect ? correctAnswer : `<s>${userAnswer}</s> → ${correctAnswer}`}
       </span>
     `;
-    grid.appendChild(cell);
-  });
+        grid.appendChild(cell);
+    });
 
-  showScreen('result');
+    showScreen('result');
 }
 
 // 12. LocalStorage and UserID
@@ -355,79 +371,81 @@ const NAME_KEY = 'math_trainer_name';
 const USER_ID_KEY = 'math_trainer_user_id';
 
 function initUser() {
-  let userId = localStorage.getItem(USER_ID_KEY);
-  if (!userId) {
-    userId = self.crypto.randomUUID();
-    localStorage.setItem(USER_ID_KEY, userId);
-  }
-  state.userId = userId;
+    let userId = localStorage.getItem(USER_ID_KEY);
+    if (!userId) {
+        userId = self.crypto.randomUUID();
+        localStorage.setItem(USER_ID_KEY, userId);
+    }
+    state.userId = userId;
 }
 
 function saveAttemptLocal(attempt) {
-  const history = getHistory();
-  history.push({ ...attempt, date: new Date().toLocaleDateString('uk-UA'), id: Date.now() });
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(history.slice(-50)));
+    const history = getHistory();
+    history.push({...attempt, date: new Date().toLocaleDateString('uk-UA'), id: Date.now()});
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(history.slice(-50)));
 }
 
 function getHistory() {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-  } catch { return []; }
+    try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+    } catch {
+        return [];
+    }
 }
 
 function savePlayerName(name) {
-  const safeName = name.substring(0, 20);
-  localStorage.setItem(NAME_KEY, safeName);
+    const safeName = name.substring(0, 20);
+    localStorage.setItem(NAME_KEY, safeName);
 }
 
 function loadPlayerName() {
-  const name = localStorage.getItem(NAME_KEY);
-  if (name) document.getElementById('player-name').value = name;
+    const name = localStorage.getItem(NAME_KEY);
+    if (name) document.getElementById('player-name').value = name;
 }
 
 // 13. Leaderboard Table
 async function renderLeaderboard() {
-  const tbody = document.getElementById('leaderboard-body');
-  if (!tbody) return;
-  tbody.innerHTML = '<tr><td colspan="8">Loading...</td></tr>';
+    const tbody = document.getElementById('leaderboard-body');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="8">Loading...</td></tr>';
 
-  let data = [];
-  if (sb) {
-    try {
-      const { data: cloudData, error } = await sb
-        .from('leaderboard')
-        .select('*')
-        .order('score', { ascending: false })
-        .limit(50);
-      
-      if (error) throw error;
-      data = cloudData;
-    } catch (e) {
-      console.error('Falling back to local data due to error:', e);
-      data = getHistory().sort((a, b) => b.score - a.score);
+    let data = [];
+    if (sb) {
+        try {
+            const {data: cloudData, error} = await sb
+                .from('leaderboard')
+                .select('*')
+                .order('score', {ascending: false})
+                .limit(50);
+
+            if (error) throw error;
+            data = cloudData;
+        } catch (e) {
+            console.error('Falling back to local data due to error:', e);
+            data = getHistory().sort((a, b) => b.score - a.score);
+        }
+    } else {
+        data = getHistory().sort((a, b) => b.score - a.score);
     }
-  } else {
-    data = getHistory().sort((a, b) => b.score - a.score);
-  }
 
-  tbody.innerHTML = '';
-  data.forEach((attempt, i) => {
-    const badgeEmojis = (attempt.badges || [])
-      .map(id => {
-        const b = badgesData.badges.find(badge => badge.id === id);
-        return b ? b.emoji : '';
-      })
-      .join(' ');
+    tbody.innerHTML = '';
+    data.forEach((attempt, i) => {
+        const badgeEmojis = (attempt.badges || [])
+            .map(id => {
+                const b = badgesData.badges.find(badge => badge.id === id);
+                return b ? b.emoji : '';
+            })
+            .join(' ');
 
-    const dateStr = attempt.created_at 
-      ? new Date(attempt.created_at).toLocaleDateString('uk-UA') 
-      : attempt.date || '';
+        const dateStr = attempt.created_at
+            ? new Date(attempt.created_at).toLocaleDateString('uk-UA')
+            : attempt.date || '';
 
-    const tr = document.createElement('tr');
-    // Highlight own results
-    if (attempt.user_id === state.userId) tr.style.background = 'rgba(233, 69, 96, 0.2)';
+        const tr = document.createElement('tr');
+        // Highlight own results
+        if (attempt.user_id === state.userId) tr.style.background = 'rgba(233, 69, 96, 0.2)';
 
-    tr.innerHTML = `
+        tr.innerHTML = `
       <td>${i + 1}</td>
       <td>${attempt.player_name || 'Anonymous'}</td>
       <td>${attempt.set_label}</td>
@@ -437,30 +455,30 @@ async function renderLeaderboard() {
       <td style="font-size: 1.2rem">${badgeEmojis}</td>
       <td>${dateStr}</td>
     `;
-    tbody.appendChild(tr);
-  });
+        tbody.appendChild(tr);
+    });
 
-  if (data.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="8">No records yet</td></tr>';
-  }
+    if (data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8">No records yet</td></tr>';
+    }
 }
 
 // 14. Event Binding
 function bindEvents() {
-  document.getElementById('btn-check').addEventListener('click', checkAnswers);
-  document.getElementById('btn-retry').addEventListener('click', () => startGame(state.currentSet));
-  document.getElementById('btn-home').addEventListener('click', () => showScreen('home'));
-  document.getElementById('btn-leaderboard').addEventListener('click', () => {
-    renderLeaderboard();
-    showScreen('leaderboard');
-  });
-  document.getElementById('btn-leaderboard-home').addEventListener('click', () => showScreen('home'));
+    document.getElementById('btn-check').addEventListener('click', checkAnswers);
+    document.getElementById('btn-retry').addEventListener('click', () => startGame(state.currentSet));
+    document.getElementById('btn-home').addEventListener('click', () => showScreen('home'));
+    document.getElementById('btn-leaderboard').addEventListener('click', () => {
+        renderLeaderboard();
+        showScreen('leaderboard');
+    });
+    document.getElementById('btn-leaderboard-home').addEventListener('click', () => showScreen('home'));
 }
 
 function shuffleArray(arr) {
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
+    for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
 }
