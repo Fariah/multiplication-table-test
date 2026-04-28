@@ -17,7 +17,7 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 
 // Initialize Supabase client
 // Note: 'supabase' object comes from the library included in index.html
-const sb = (SUPABASE_URL && SUPABASE_URL !== 'ВАШ_URL_ТУТ') ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+const sb = (SUPABASE_URL && SUPABASE_URL !== 'https://mxcstpknilisaetqiepe.supabase.co') ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 
 // Loading on start
 document.addEventListener('DOMContentLoaded', async () => {
