@@ -31,9 +31,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const container = document.getElementById('sets-list');
     if (container) {
       container.innerHTML = `<p style="color: var(--wrong); grid-column: 1/-1; padding: 20px; background: rgba(231,76,60,0.1); border-radius: 12px;">
-        ⚠️ <b>Data loading error.</b><br>
-        Browser blocks JSON loading when opening file directly.<br><br>
-        Please run the site via <b>Live Server</b> (in VS Code) or deploy it to a hosting (e.g., Netlify).
+        ⚠️ <b>Помилка завантаження даних.</b>
       </p>`;
     }
   }
@@ -76,8 +74,8 @@ function renderHomeSets() {
     card.className = 'set-card' + (set.extra ? ' extra' : '');
     card.innerHTML = `
       <div class="set-label">${set.label}</div>
-      <div class="set-meta">${set.tasks.length} tasks · ${formatTime(set.timeLimit)}</div>
-      ${set.extra ? '<div class="set-bonus">×1.5 points</div>' : ''}
+      <div class="set-meta">${set.tasks.length} прикладів · ${formatTime(set.timeLimit)}</div>
+      ${set.extra ? '<div class="set-bonus">×1.5 очок</div>' : ''}
     `;
     card.addEventListener('click', () => startGame(set));
     container.appendChild(card);
