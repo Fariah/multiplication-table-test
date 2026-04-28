@@ -20,19 +20,20 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const sb = (SUPABASE_URL && SUPABASE_URL !== 'https://mxcstpknilisaetqiepe.supabase.co') ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 
 if (sb) {
-    console.log('Спроба відправити дані:', attempt);
-    try {
-        const {data, error} = await sb.from('leaderboard').insert([attempt]);
-        if (error) {
-            console.error('Помилка Supabase:', error.message, error.details);
-        } else {
-            console.log('Дані успішно збережено в хмарі!', data);
-        }
-    } catch (e) {
-        console.error('Критична помилка мережі:', e);
+  console.log('Syncing attempt with Supabase...', attempt);
+  try {
+    const { data, error } = await sb.from('leaderboard').insert([attempt]);
+    if (error) {
+      console.error('Supabase error on insert:', error.message, error.details);
+      // alert('Supabase error: ' + error.message);
+    } else {
+      console.log('Successfully synced with Supabase');
     }
+  } catch (e) {
+    console.error('Network error during sync:', e);
+  }
 } else {
-    console.warn('Supabase не ініціалізовано. Перевірте ключі в app.js');
+  console.warn('Sync skipped: Supabase client not initialized');
 }
 
 // Loading on start
@@ -265,14 +266,20 @@ async function checkAnswers() {
 
     // Sync with Supabase
     if (sb) {
+        console.log('Syncing attempt with Supabase...', attempt);
         try {
-            const {data, error} = await sb.from('leaderboard').insert([attempt]);
+            const { data, error } = await sb.from('leaderboard').insert([attempt]);
             if (error) {
-                console.error('Supabase error on insert:', error.message);
+                console.error('Supabase error on insert:', error.message, error.details);
+                // alert('Supabase error: ' + error.message);
+            } else {
+                console.log('Successfully synced with Supabase');
             }
         } catch (e) {
             console.error('Network error during sync:', e);
         }
+    } else {
+        console.warn('Sync skipped: Supabase client not initialized');
     }
 
     showResult(results, {...attempt, timeSpent, date: new Date().toLocaleDateString('uk-UA')}, earnedBadges);
@@ -371,14 +378,20 @@ const NAME_KEY = 'math_trainer_name';
 const USER_ID_KEY = 'math_trainer_user_id';
 
 function initUser() {
-    let userId = localStorage.getItem(USER_ID_KEY);
-    if (!userId) {
-        userId = self.crypto.randomUUID();
-        localStorage.setItem(USER_ID_KEY, userId);
+  let userId = localStorage.getItem(USER_ID_KEY);
+  if (!userId) {
+    if (self.crypto && self.crypto.randomUUID) {
+      userId = self.crypto.randomUUID();
+    } else {
+      // Fallback for non-secure contexts
+      userId = 'user-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+      console.warn('Using fallback ID because crypto.randomUUID is not available');
     }
-    state.userId = userId;
+    localStorage.setItem(USER_ID_KEY, userId);
+  }
+  state.userId = userId;
+  console.log('User initialized with ID:', state.userId);
 }
-
 function saveAttemptLocal(attempt) {
     const history = getHistory();
     history.push({...attempt, date: new Date().toLocaleDateString('uk-UA'), id: Date.now()});
