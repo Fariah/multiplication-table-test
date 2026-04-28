@@ -1,0 +1,53 @@
+{
+  "badges": [
+    {
+      "id": "sniper",
+      "label": "Снайпер",
+      "description": "Жодної помилки!",
+      "icon": "assets/badges/sniper.png",
+      "emoji": "🎯"
+    },
+    {
+      "id": "lightning",
+      "label": "Блискавка",
+      "description": "Виконав за половину відведеного часу",
+      "icon": "assets/badges/lightning.png",
+      "emoji": "⚡"
+    },
+    {
+      "id": "streak",
+      "label": "Стрік",
+      "description": "3 спроби поспіль без помилок",
+      "icon": "assets/badges/streak.png",
+      "emoji": "🔥"
+    },
+    {
+      "id": "master",
+      "label": "Майстер",
+      "description": "Екстра режим без помилок",
+      "icon": "assets/badges/master.png",
+      "emoji": "🌟"
+    },
+    {
+      "id": "record",
+      "label": "Рекордсмен",
+      "description": "Новий особистий рекорд",
+      "icon": "assets/badges/record.png",
+      "emoji": "🚀"
+    },
+    {
+      "id": "perfect",
+      "label": "Перфекціоніст",
+      "description": "100% правильно І більше половини часу залишилось",
+      "icon": "assets/badges/perfect.png",
+      "emoji": "💯"
+    },
+    {
+      "id": "first",
+      "label": "Перший раз",
+      "description": "Перша спроба!",
+      "icon": "assets/badges/first.png",
+      "emoji": "🎉"
+    }
+  ]
+}

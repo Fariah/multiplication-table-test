@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Тренажер множення</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ЕКРАН 1: Головна -->
+  <div id="screen-home" class="screen active">
+    <h1>🧮 Тренажер множення</h1>
+    <div class="name-input-block">
+      <label for="player-name">Твоє ім'я:</label>
+      <input type="text" id="player-name" placeholder="Введи ім'я" maxlength="20">
+    </div>
+    <h2>Обери набір:</h2>
+    <div id="sets-list" class="sets-grid">
+      <!-- Генерується з tasks.json через JS -->
+    </div>
+    <button id="btn-leaderboard" class="btn-secondary">🏆 Таблиця рекордів</button>
+  </div>
+
+  <!-- ЕКРАН 2: Гра -->
+  <div id="screen-game" class="screen">
+    <div class="game-header">
+      <div id="timer-display" class="timer">3:00</div>
+      <div id="game-title" class="game-title"></div>
+      <button id="btn-check" class="btn-primary">✅ Перевірити</button>
+    </div>
+    <div id="tasks-grid" class="tasks-grid">
+      <!-- Генерується динамічно через JS -->
+    </div>
+  </div>
+
+  <!-- ЕКРАН 3: Результат -->
+  <div id="screen-result" class="screen">
+    <h1>Результат!</h1>
+    <div id="result-score" class="score-display"></div>
+    <div id="result-stats" class="stats-block"></div>
+    <div id="result-badges" class="badges-block"></div>
+    <div id="result-grid" class="tasks-grid readonly"></div>
+    <div class="result-actions">
+      <button id="btn-retry" class="btn-primary">🔄 Спробувати ще</button>
+      <button id="btn-home" class="btn-secondary">🏠 Головна</button>
+    </div>
+  </div>
+
+  <!-- ЕКРАН 4: Таблиця рекордів -->
+  <div id="screen-leaderboard" class="screen">
+    <h1>🏆 Таблиця рекордів</h1>
+    <div id="leaderboard-filters" class="filters"></div>
+    <table id="leaderboard-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Ім'я</th>
+          <th>Набір</th>
+          <th>Очки</th>
+          <th>Час</th>
+          <th>Правильно</th>
+          <th>Бейджі</th>
+          <th>Дата</th>
+        </tr>
+      </thead>
+      <tbody id="leaderboard-body"></tbody>
+    </table>
+    <button id="btn-leaderboard-home" class="btn-secondary">🏠 Головна</button>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="app.js"></script>
+</body>
+</html>
