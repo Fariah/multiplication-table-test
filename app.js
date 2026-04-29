@@ -16,28 +16,11 @@ const SUPABASE_URL = 'https://mxcstpknilisaetqiepe.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im14Y3N0cGtuaWxpc2FldHFpZXBlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczOTI4NjcsImV4cCI6MjA5Mjk2ODg2N30.hONBOBbedAXBmkgAisT2pYhxGhwLEjXP9MQGHOFQJSQ';
 
 // Initialize Supabase client
-// Note: 'supabase' object comes from the library included in index.html
-const sb = (SUPABASE_URL && SUPABASE_URL !== 'https://mxcstpknilisaetqiepe.supabase.co') ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
-
-if (sb) {
-  console.log('Syncing attempt with Supabase...', attempt);
-  try {
-    const { data, error } = await sb.from('leaderboard').insert([attempt]);
-    if (error) {
-      console.error('Supabase error on insert:', error.message, error.details);
-      // alert('Supabase error: ' + error.message);
-    } else {
-      console.log('Successfully synced with Supabase');
-    }
-  } catch (e) {
-    console.error('Network error during sync:', e);
-  }
-} else {
-  console.warn('Sync skipped: Supabase client not initialized');
-}
+const sb = (SUPABASE_URL && SUPABASE_KEY) ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 
 // Loading on start
 document.addEventListener('DOMContentLoaded', async () => {
+    console.log('App started. Supabase client:', sb ? 'Initialized' : 'Not initialized');
     initUser();
     loadPlayerName();
     try {
@@ -48,7 +31,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const container = document.getElementById('sets-list');
         if (container) {
             container.innerHTML = `<p style="color: var(--wrong); grid-column: 1/-1; padding: 20px; background: rgba(231,76,60,0.1); border-radius: 12px;">
-        ⚠️ <b>Помилка завантаження даних.</b>
+        ⚠️ <b>Помилка завантаження даних.</b> Переконайтеся, що використовуєте локальний сервер.
       </p>`;
         }
     }
@@ -60,7 +43,6 @@ let tasksData = null;
 let badgesData = null;
 
 async function loadData() {
-    // Check for local file protocol
     if (window.location.protocol === 'file:') {
         throw new Error('Local file protocol detected');
     }
@@ -103,19 +85,16 @@ function renderHomeSets() {
 function startGame(set) {
     const name = document.getElementById('player-name').value.trim();
     if (!name) {
-        alert('Please enter your name!');
+        alert('Введіть своє ім\'я!');
         return;
     }
 
     state.playerName = name;
     savePlayerName(name);
     state.currentSet = set;
-
-    // Dynamic task generation
     state.tasks = generateDynamicTasks(set);
-
-    state.timeLimit = set.timeLimit;
-    state.timeLeft = set.timeLimit;
+    state.timeLimit = set.timeLimit || DEFAULT_TIME_LIMIT;
+    state.timeLeft = state.timeLimit;
     state.isFinished = false;
     state.startTime = Date.now();
 
@@ -124,7 +103,6 @@ function startGame(set) {
     startTimer();
     showScreen('game');
 
-    // Focus on the first input
     setTimeout(() => {
         const first = document.querySelector('.answer-input');
         if (first) first.focus();
@@ -142,20 +120,16 @@ function generateDynamicTasks(set) {
             for (let b = 1; b <= 9; b++) tasks.push({a, b, op: '*'});
         }
     } else if (set.id === 'divide-extra') {
-        // Generate reverse operations for 2-9 multiplication table
         for (let b = 2; b <= 9; b++) {
             for (let res = 2; res <= 9; res++) {
                 tasks.push({a: b * res, b, op: '/'});
             }
         }
-        // Take random 36 tasks for division
         shuffleArray(tasks);
         return tasks.slice(0, 36);
     } else {
-        // Fallback to static tasks if ID is unknown
         tasks = [...set.tasks];
     }
-
     return shuffleArray(tasks);
 }
 
@@ -183,7 +157,6 @@ function renderTasksGrid() {
         grid.appendChild(cell);
     });
 
-    // Enter moves to next input
     grid.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
             const inputs = Array.from(grid.querySelectorAll('.answer-input'));
@@ -213,7 +186,6 @@ function startTimer() {
 function updateTimerDisplay() {
     const el = document.getElementById('timer-display');
     el.textContent = formatTime(state.timeLeft);
-    // Red color when less than 30 seconds left
     el.classList.toggle('timer-danger', state.timeLeft <= 30);
 }
 
@@ -261,25 +233,22 @@ async function checkAnswers() {
         badges: earnedBadges.map(b => b.id),
     };
 
-    // Save locally for instant view
     saveAttemptLocal(attempt);
 
-    // Sync with Supabase
     if (sb) {
-        console.log('Syncing attempt with Supabase...', attempt);
+        console.log('Спроба синхронізації з Supabase:', attempt);
         try {
             const { data, error } = await sb.from('leaderboard').insert([attempt]);
             if (error) {
-                console.error('Supabase error on insert:', error.message, error.details);
-                // alert('Supabase error: ' + error.message);
+                console.error('Помилка Supabase при записі:', error.message, error.details);
             } else {
-                console.log('Successfully synced with Supabase');
+                console.log('Дані успішно збережено в Supabase');
             }
         } catch (e) {
-            console.error('Network error during sync:', e);
+            console.error('Помилка мережі при синхронізації:', e);
         }
     } else {
-        console.warn('Sync skipped: Supabase client not initialized');
+        console.warn('Supabase не ініціалізовано (перевірте URL/Key)');
     }
 
     showResult(results, {...attempt, timeSpent, date: new Date().toLocaleDateString('uk-UA')}, earnedBadges);
@@ -287,10 +256,10 @@ async function checkAnswers() {
 
 // 9. Score Calculation
 function calculateScore(correct, total, timeLeft, isExtra) {
-    let score = correct * 10;                         // 10 points per correct answer
-    if (correct === total) score += 50;               // Bonus for all correct
-    score += Math.floor(timeLeft / 5);                // 1 point for every 5 seconds remaining
-    if (isExtra) score = Math.round(score * 1.5);     // ×1.5 multiplier for extra mode
+    let score = correct * 10;
+    if (correct === total) score += 50;
+    score += Math.floor(timeLeft / 5);
+    if (isExtra) score = Math.round(score * 1.5);
     return score;
 }
 
@@ -301,28 +270,18 @@ function calculateBadges(correct, total, timeLeft, set) {
     const find = (id) => allBadges.find(b => b.id === id);
 
     const history = getHistory();
-    // First attempt ever
     if (history.length === 1) earned.push(find('first'));
-
-    // No errors
     if (correct === total) earned.push(find('sniper'));
-
-    // Finished in half time
     if (timeLeft >= set.timeLimit / 2) earned.push(find('lightning'));
-
-    // Perfectionist (all correct AND half time left)
     if (correct === total && timeLeft >= set.timeLimit / 2) earned.push(find('perfect'));
 
-    // Streak (3 times in a row without errors for this set)
     const setHistory = history.filter(a => a.set_label === set.label);
     if (setHistory.length >= 2 && setHistory.slice(-2).every(a => a.correct === a.total) && correct === total) {
         earned.push(find('streak'));
     }
 
-    // Master (extra mode without errors)
     if (set.extra && correct === total) earned.push(find('master'));
 
-    // Record breaker
     const prevBest = Math.max(0, ...history.slice(0, -1).map(a => a.score));
     const currentScore = (history.length > 0) ? history[history.length - 1].score : 0;
     if (currentScore > prevBest && history.length > 1) earned.push(find('record'));
@@ -333,18 +292,17 @@ function calculateBadges(correct, total, timeLeft, set) {
 // 11. Result Screen
 function showResult(results, attempt, badges) {
     document.getElementById('result-score').innerHTML = `
-    <div class="score-big">${attempt.score} points</div>
+    <div class="score-big">${attempt.score} очок</div>
     <div class="score-detail">
-      ✅ ${attempt.correct} / ${attempt.total} correct &nbsp;|&nbsp; ⏱ ${formatTime(attempt.timeSpent || 0)}
+      ✅ ${attempt.correct} / ${attempt.total} правильно &nbsp;|&nbsp; ⏱ ${formatTime(attempt.timeSpent || 0)}
     </div>
   `;
 
-    // Badges with alerts
     const badgesEl = document.getElementById('result-badges');
     if (badges.length > 0) {
-        badgesEl.innerHTML = '<h3>Your rewards (click on them!):</h3>' +
+        badgesEl.innerHTML = '<h3>Ваші нагороди:</h3>' +
             badges.map(b => `
-        <div class="badge-item" onclick="alert('${b.label}: ${b.description}')" title="${b.description}">
+        <div class="badge-item" title="${b.description}">
           <span class="badge-emoji">${b.emoji}</span>
           <span class="badge-label">${b.label}</span>
         </div>
@@ -353,7 +311,6 @@ function showResult(results, attempt, badges) {
         badgesEl.innerHTML = '';
     }
 
-    // Result grid with highlighting
     const grid = document.getElementById('result-grid');
     grid.innerHTML = '';
     results.forEach(({task, userAnswer, correctAnswer, isCorrect}) => {
@@ -378,20 +335,19 @@ const NAME_KEY = 'math_trainer_name';
 const USER_ID_KEY = 'math_trainer_user_id';
 
 function initUser() {
-  let userId = localStorage.getItem(USER_ID_KEY);
-  if (!userId) {
-    if (self.crypto && self.crypto.randomUUID) {
-      userId = self.crypto.randomUUID();
-    } else {
-      // Fallback for non-secure contexts
-      userId = 'user-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
-      console.warn('Using fallback ID because crypto.randomUUID is not available');
+    let userId = localStorage.getItem(USER_ID_KEY);
+    if (!userId) {
+        if (self.crypto && self.crypto.randomUUID) {
+            userId = self.crypto.randomUUID();
+        } else {
+            userId = 'user-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+        }
+        localStorage.setItem(USER_ID_KEY, userId);
     }
-    localStorage.setItem(USER_ID_KEY, userId);
-  }
-  state.userId = userId;
-  console.log('User initialized with ID:', state.userId);
+    state.userId = userId;
+    console.log('User ID:', state.userId);
 }
+
 function saveAttemptLocal(attempt) {
     const history = getHistory();
     history.push({...attempt, date: new Date().toLocaleDateString('uk-UA'), id: Date.now()});
@@ -407,8 +363,7 @@ function getHistory() {
 }
 
 function savePlayerName(name) {
-    const safeName = name.substring(0, 20);
-    localStorage.setItem(NAME_KEY, safeName);
+    localStorage.setItem(NAME_KEY, name.substring(0, 20));
 }
 
 function loadPlayerName() {
@@ -417,36 +372,101 @@ function loadPlayerName() {
 }
 
 // 13. Leaderboard Table
+let currentLeaderboardFilter = '';
+
 async function renderLeaderboard() {
     const tbody = document.getElementById('leaderboard-body');
-    if (!tbody) return;
-    tbody.innerHTML = '<tr><td colspan="8">Loading...</td></tr>';
+    const filtersEl = document.getElementById('leaderboard-filters');
+    if (!tbody || !filtersEl) return;
+
+    // Initialize filter if empty
+    if (!currentLeaderboardFilter && tasksData && tasksData.sets.length > 0) {
+        currentLeaderboardFilter = tasksData.sets[0].label;
+    }
+
+    // Render filters
+    filtersEl.innerHTML = '';
+    
+    // Original sets filters
+    tasksData.sets.forEach(set => {
+        const btn = document.createElement('button');
+        btn.className = 'filter-btn' + (currentLeaderboardFilter === set.label ? ' active' : '');
+        btn.textContent = set.label;
+        btn.onclick = () => {
+            currentLeaderboardFilter = set.label;
+            renderLeaderboard();
+        };
+        filtersEl.appendChild(btn);
+    });
+
+    // Add "My Results" filter
+    const myBtn = document.createElement('button');
+    myBtn.className = 'filter-btn' + (currentLeaderboardFilter === 'my' ? ' active' : '');
+    myBtn.innerHTML = '👤 Мої результати';
+    myBtn.onclick = () => {
+        currentLeaderboardFilter = 'my';
+        renderLeaderboard();
+    };
+    filtersEl.appendChild(myBtn);
+
+    tbody.innerHTML = '<tr><td colspan="8">Завантаження...</td></tr>';
 
     let data = [];
+    const isMyFilter = currentLeaderboardFilter === 'my';
+
     if (sb) {
         try {
-            const {data: cloudData, error} = await sb
-                .from('leaderboard')
-                .select('*')
-                .order('score', {ascending: false})
-                .limit(50);
+            let query = sb.from('leaderboard').select('*');
+            
+            if (isMyFilter) {
+                query = query.eq('user_id', state.userId).order('created_at', {ascending: false});
+            } else {
+                query = query.eq('set_label', currentLeaderboardFilter).order('score', {ascending: false});
+            }
 
+            const {data: cloudData, error} = await query.limit(isMyFilter ? 100 : 200);
             if (error) throw error;
             data = cloudData;
         } catch (e) {
-            console.error('Falling back to local data due to error:', e);
-            data = getHistory().sort((a, b) => b.score - a.score);
+            console.error('Помилка завантаження з хмари:', e);
+            data = getHistory();
+            if (isMyFilter) {
+                data = data.filter(a => a.user_id === state.userId).sort((a, b) => b.id - a.id);
+            } else {
+                data = data.filter(a => a.set_label === currentLeaderboardFilter).sort((a, b) => b.score - a.score);
+            }
         }
     } else {
-        data = getHistory().sort((a, b) => b.score - a.score);
+        data = getHistory();
+        if (isMyFilter) {
+            data = data.filter(a => a.user_id === state.userId).sort((a, b) => b.id - a.id);
+        } else {
+            data = data.filter(a => a.set_label === currentLeaderboardFilter).sort((a, b) => b.score - a.score);
+        }
+    }
+
+    let displayData = [];
+    if (isMyFilter) {
+        // Show everything for user
+        displayData = data;
+    } else {
+        // Keep only best result for each user for global sets
+        const seenUsers = new Set();
+        for (const attempt of data) {
+            if (!seenUsers.has(attempt.user_id)) {
+                displayData.push(attempt);
+                seenUsers.add(attempt.user_id);
+            }
+            if (displayData.length >= 50) break;
+        }
     }
 
     tbody.innerHTML = '';
-    data.forEach((attempt, i) => {
-        const badgeEmojis = (attempt.badges || [])
+    displayData.forEach((attempt, i) => {
+        const badgeIcons = (attempt.badges || [])
             .map(id => {
                 const b = badgesData.badges.find(badge => badge.id === id);
-                return b ? b.emoji : '';
+                return b ? `<span class="leaderboard-badge" title="${b.label}: ${b.description}">${b.emoji}</span>` : '';
             })
             .join(' ');
 
@@ -455,24 +475,23 @@ async function renderLeaderboard() {
             : attempt.date || '';
 
         const tr = document.createElement('tr');
-        // Highlight own results
         if (attempt.user_id === state.userId) tr.style.background = 'rgba(233, 69, 96, 0.2)';
 
         tr.innerHTML = `
       <td>${i + 1}</td>
-      <td>${attempt.player_name || 'Anonymous'}</td>
+      <td>${attempt.player_name || 'Анонім'}</td>
       <td>${attempt.set_label}</td>
       <td><strong>${attempt.score}</strong></td>
       <td>${formatTime(attempt.time_spent || 0)}</td>
       <td>${attempt.correct}/${attempt.total}</td>
-      <td style="font-size: 1.2rem">${badgeEmojis}</td>
+      <td style="font-size: 1.2rem">${badgeIcons}</td>
       <td>${dateStr}</td>
     `;
         tbody.appendChild(tr);
     });
 
-    if (data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8">No records yet</td></tr>';
+    if (displayData.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8">Немає результатів для цього набору</td></tr>';
     }
 }
 
